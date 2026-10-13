@@ -2,6 +2,8 @@
 package handler
 
 import (
+	"bytes"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -86,5 +88,66 @@ func TestCSRFProtect(t *testing.T) {
 	h.ServeHTTP(mismatch, newPost("wrong", true))
 	if mismatch.Code != http.StatusForbidden || served {
 		t.Fatalf("mismatched-token POST not blocked: code=%d served=%v", mismatch.Code, served)
+	}
+}
+
+func TestCSRFProtectMultipartUpload(t *testing.T) {
+	s := &Server{}
+	var served bool
+	h := s.csrfProtect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = true
+		if _, _, err := r.FormFile("file"); err != nil {
+			t.Errorf("uploaded file unavailable after CSRF validation: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	getRec := httptest.NewRecorder()
+	h.ServeHTTP(getRec, httptest.NewRequest(http.MethodGet, "/kvitton", nil))
+	cookie := csrfCookieFrom(t, getRec)
+
+	newMultipartPost := func(token string) *http.Request {
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
+		if token != "" {
+			if err := mw.WriteField("csrf", token); err != nil {
+				t.Fatal(err)
+			}
+		}
+		fw, err := mw.CreateFormFile("file", "receipt.pdf")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := fw.Write([]byte("%PDF-test")); err != nil {
+			t.Fatal(err)
+		}
+		if err := mw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/kvitton", &body)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		req.AddCookie(cookie)
+		return req
+	}
+
+	served = false
+	okRec := httptest.NewRecorder()
+	h.ServeHTTP(okRec, newMultipartPost(cookie.Value))
+	if okRec.Code != http.StatusOK || !served {
+		t.Fatalf("valid multipart upload rejected: code=%d served=%v", okRec.Code, served)
+	}
+
+	served = false
+	missingRec := httptest.NewRecorder()
+	h.ServeHTTP(missingRec, newMultipartPost(""))
+	if missingRec.Code != http.StatusForbidden || served {
+		t.Fatalf("multipart upload without CSRF token not blocked: code=%d served=%v", missingRec.Code, served)
+	}
+
+	served = false
+	wrongRec := httptest.NewRecorder()
+	h.ServeHTTP(wrongRec, newMultipartPost("wrong"))
+	if wrongRec.Code != http.StatusForbidden || served {
+		t.Fatalf("multipart upload with wrong CSRF token not blocked: code=%d served=%v", wrongRec.Code, served)
 	}
 }
