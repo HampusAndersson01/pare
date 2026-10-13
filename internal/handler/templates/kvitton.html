@@ -1,24 +1,39 @@
 {{define "content"}}
 <h1>Kvitton och underlag</h1>
-<p class="muted" style="max-width:680px">Ladda upp kvitton och leverantörsunderlag (PDF eller bild). Filerna krypteras direkt vid uppladdning och lämnar aldrig Pare - de skickas aldrig till AI-assistenten. Koppla ett kvitto till en leverantörsfaktura så blir det verifikationsunderlag och sparas enligt bokföringslagen.</p>
+<p class="muted" style="max-width:760px">Ladda upp kvitton och leverantörsunderlag (PDF eller bild). Filerna krypteras direkt vid uppladdning och lämnar aldrig Pare. Ett underlag kan kopplas antingen till en leverantörsfaktura eller direkt till ett befintligt verifikat och sparas då som verifikationsunderlag enligt bokföringslagen.</p>
 <form method="post" action="/kvitton" enctype="multipart/form-data" class="row" style="max-width:640px;margin-bottom:18px">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <div><label>Fil (PDF eller bild)</label><input type="file" name="file" accept="application/pdf,image/*" required></div>
-  <div><label>Notering</label><input name="note" placeholder="t.ex. Anthropic mars"></div>
+  <div><label>Notering</label><input name="note" placeholder="t.ex. OpenAI juni"></div>
   <div style="flex:0 0 auto"><label>&nbsp;</label><button class="btn" type="submit">Ladda upp</button></div>
 </form>
-{{if .Data}}
+{{if .Data.Documents}}
 <table>
-  <tr><th>Fil</th><th>Notering</th><th>Uppladdad</th><th>Status</th><th></th></tr>
-  {{range .Data}}<tr>
+  <tr><th>Fil</th><th>Notering</th><th>Uppladdad</th><th>Status</th><th>Åtgärd</th></tr>
+  {{range .Data.Documents}}<tr>
     <td><a href="/kvitton/{{.ID}}/file" target="_blank">{{.Filename}}</a></td>
     <td class="muted">{{.Note}}</td>
     <td class="muted">{{.CreatedAt.Format "2006-01-02"}}</td>
-    <td>{{if .Attached}}<span class="pill finalized">kopplad</span>{{else}}<span class="pill draft">okopplad</span>{{end}}</td>
-    <td class="num">
+    <td>{{if .Attached}}<span class="pill finalized">kopplad{{if .Target}} · {{.Target}}{{end}}</span>{{else}}<span class="pill draft">okopplad</span>{{end}}</td>
+    <td>
       {{if not .Attached}}
-        <a class="btn small" href="/supplier-invoices/new?doc={{.ID}}">Bokför som kostnad</a>
-        <form method="post" action="/kvitton/{{.ID}}/delete" style="display:inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn small danger" type="submit">Ta bort</button></form>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end">
+          <a class="btn small" href="/supplier-invoices/new?doc={{.ID}}">Bokför som kostnad</a>
+          {{if $.Data.Verifications}}
+          <form method="post" action="/kvitton/{{.ID}}/verification" style="display:flex;gap:6px;align-items:end">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <div>
+              <label style="font-size:12px">Koppla till verifikat</label>
+              <select name="verification_id" required>
+                <option value="">Välj…</option>
+                {{range $.Data.Verifications}}<option value="{{.ID}}">{{.Series}}-{{.Number}} · {{.Date}}</option>{{end}}
+              </select>
+            </div>
+            <button class="btn small" type="submit">Koppla</button>
+          </form>
+          {{end}}
+          <form method="post" action="/kvitton/{{.ID}}/delete" style="display:inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn small danger" type="submit">Ta bort</button></form>
+        </div>
       {{end}}
     </td>
   </tr>{{end}}
