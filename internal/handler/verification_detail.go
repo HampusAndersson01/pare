@@ -95,3 +95,30 @@ func (s *Server) handleVerificationDetail(w http.ResponseWriter, r *http.Request
 	pd.Data = data
 	render(w, "verification_detail", pd, http.StatusOK)
 }
+
+// handleReceiptPreviewFile serves only sniffed-safe receipt formats inline and
+// permits same-origin framing for the verification detail page. The regular
+// /file route keeps its stricter no-frame headers for direct viewing/download.
+func (s *Server) handleReceiptPreviewFile(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	doc, err := s.Store.GetDocumentContent(r.Context(), companyID(r), id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	detected := http.DetectContentType(doc.Content)
+	if !inlineSafeReceiptType(detected) {
+		http.Error(w, "preview unavailable", http.StatusUnsupportedMediaType)
+		return
+	}
+	w.Header().Set("Content-Type", detected)
+	w.Header().Set("Content-Disposition", "inline; filename="+strconv.Quote(doc.Filename))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'self'")
+	_, _ = w.Write(doc.Content)
+}
