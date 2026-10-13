@@ -23,18 +23,55 @@
 </form>
 <h2>Bokförda verifikat</h2>
 {{if $d.Verifications}}
+{{$hasActive := false}}
+{{$hasHistory := false}}
+{{range $d.Verifications}}
+  {{if or .IsReversal .IsReversed}}{{$hasHistory = true}}{{else}}{{$hasActive = true}}{{end}}
+{{end}}
+
+{{if $hasActive}}
 <table>
   <tr><th>Verifikat</th><th>Datum</th><th>Beskrivning</th><th>Kontering</th><th></th></tr>
-  {{range $d.Verifications}}<tr>
+  {{range $d.Verifications}}
+  {{if or .IsReversal .IsReversed}}{{else}}
+  <tr>
     <td><a href="/verifications/{{.ID}}"><strong>{{.Series}}{{.Number}}</strong></a></td>
     <td>{{.Date}}</td>
     <td>{{.Description}}</td>
     <td class="muted" style="font-size:12px">{{range .Lines}}<div>{{.Account}} {{if gt .Debit 0}}debet {{.Debit}}{{else}}kredit {{.Credit}}{{end}}</div>{{end}}</td>
     <td class="num">
       <a class="btn small secondary" href="/verifications/{{.ID}}">Detaljer</a>
-      {{if .IsReversal}}<span class="muted">rättelse</span>{{else if .IsReversed}}<span class="muted">ångrad</span>{{else}}<form method="post" action="/verifications/{{.ID}}/undo" style="display:inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn small secondary" type="submit">Ångra</button></form>{{end}}
+      <form method="post" action="/verifications/{{.ID}}/undo" style="display:inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn small secondary" type="submit">Ångra</button></form>
     </td>
-  </tr>{{end}}
+  </tr>
+  {{end}}
+  {{end}}
 </table>
+{{else}}<div class="empty">Inga aktiva verifikat.</div>{{end}}
+
+{{if $hasHistory}}
+<details style="margin-top:16px">
+  <summary style="cursor:pointer;font-weight:600">Visa ångrade och rättelser</summary>
+  <div style="margin-top:10px">
+    <table>
+      <tr><th>Verifikat</th><th>Datum</th><th>Beskrivning</th><th>Kontering</th><th>Status</th></tr>
+      {{range $d.Verifications}}
+      {{if or .IsReversal .IsReversed}}
+      <tr>
+        <td><a href="/verifications/{{.ID}}"><strong>{{.Series}}{{.Number}}</strong></a></td>
+        <td>{{.Date}}</td>
+        <td>{{.Description}}</td>
+        <td class="muted" style="font-size:12px">{{range .Lines}}<div>{{.Account}} {{if gt .Debit 0}}debet {{.Debit}}{{else}}kredit {{.Credit}}{{end}}</div>{{end}}</td>
+        <td class="num">
+          <a class="btn small secondary" href="/verifications/{{.ID}}">Detaljer</a>
+          {{if .IsReversal}}<span class="muted">rättelse</span>{{else}}<span class="muted">ångrad</span>{{end}}
+        </td>
+      </tr>
+      {{end}}
+      {{end}}
+    </table>
+  </div>
+</details>
+{{end}}
 {{else}}<div class="empty">Inga verifikat än.</div>{{end}}
 {{end}}
