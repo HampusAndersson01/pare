@@ -30,7 +30,7 @@
     <td>{{.Date}}</td>
     <td>{{.Description}}</td>
     <td class="muted" style="font-size:12px">{{range .Lines}}<div>{{.Account}} {{if gt .Debit 0}}debet {{.Debit}}{{else}}kredit {{.Credit}}{{end}}</div>{{end}}</td>
-    <td class="num">{{if not .IsReversal}}<form method="post" action="/verifications/{{.ID}}/undo" style="display:inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn small secondary" type="submit">Ångra</button></form>{{else}}<span class="muted">rättelse</span>{{end}}</td>
+    <td class="num">{{if .IsReversal}}<span class="muted">rättelse</span>{{else if .IsReversed}}<span class="muted">ångrad</span>{{else}}<form method="post" action="/verifications/{{.ID}}/undo" style="display:inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn small secondary" type="submit">Ångra</button></form>{{end}}</td>
   </tr>{{end}}
 </table>
 {{else}}<div class="empty">Inga verifikat än.</div>{{end}}
