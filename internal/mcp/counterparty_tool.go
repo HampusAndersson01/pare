@@ -37,6 +37,9 @@ func (s *Server) registerCounterpartyTools() {
 		proto: &counterpartyResult{},
 		run:   runCreateCounterparty,
 	})
+	// Keep document/receipt tools in a separate file while registering all
+	// extended write/read tools from the same New() hook.
+	s.registerDocumentTools()
 }
 
 func runCreateCounterparty(ctx context.Context, tc toolCtx, args json.RawMessage) (any, error) {
