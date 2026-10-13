@@ -180,7 +180,7 @@ func Report(bal map[string]ledger.Amount) Declaration {
 		Box21: dr("4535"), // EU services acquired (reverse charge)
 		Box22: dr("4531"), // non-EU services acquired (reverse charge)
 		Box30: cr("2614") + cr("2615"),
-		Box05: cr("3001") + cr("3002") + cr("3003"),
+		Box05: cr("3001") + cr("3002") + cr("3003") + cr("3301"), // domestic taxable sales, including legacy service account
 		Box39: cr("3308"),
 		Box48: dr("2640") + dr("2641") + dr("2645"),
 	}
