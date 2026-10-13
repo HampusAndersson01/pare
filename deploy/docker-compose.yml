@@ -15,7 +15,7 @@ services:
       PARE_DATABASE_URL: "postgres://pare:${PARE_POSTGRES_PASSWORD:-changeme}@pare-postgres:5432/pare?sslmode=disable"
       PARE_GOTENBERG_URL: "http://pare-gotenberg:3000"
     ports:
-      - "8080:8080"
+      - "${PARE_HOST_PORT:-8080}:8080"
     depends_on:
       pare-postgres:
         condition: service_healthy
