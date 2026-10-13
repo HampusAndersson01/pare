@@ -18,6 +18,12 @@ FROM audit_log WHERE company_id = $1 ORDER BY id ASC;
 -- name: GetVerification :one
 SELECT * FROM verifications WHERE id = $1;
 
+-- name: GetVerificationForUpdate :one
+SELECT * FROM verifications WHERE id = $1 FOR UPDATE;
+
+-- name: HasVerificationReversal :one
+SELECT EXISTS (SELECT 1 FROM verifications WHERE reversal_of = $1);
+
 -- name: ListVerificationLinesByVerification :many
 SELECT account, debit_ore, credit_ore, vat_code
 FROM verification_lines WHERE verification_id = $1 ORDER BY id;
