@@ -22,6 +22,11 @@ import (
 // ErrPeriodClosed is returned when a posting falls in a locked period.
 var ErrPeriodClosed = errors.New("store: the accounting period is closed for that date; post the correction in the current period")
 
+// ErrAlreadyReversed is returned when an attempt is made to undo a verification
+// that already has a reversing entry. An original verification may only be
+// reversed once; otherwise repeated requests would alter the ledger repeatedly.
+var ErrAlreadyReversed = errors.New("store: verification has already been reversed")
+
 // Actor identifies who is performing a write, for the audit log.
 type Actor struct {
 	Kind   string // "user", "ai", or "system"
@@ -181,6 +186,7 @@ type VerificationSummary struct {
 	Date        string
 	Description string
 	IsReversal  bool
+	IsReversed  bool
 	Lines       []VerificationLineView
 }
 
@@ -191,6 +197,12 @@ func (s *Store) ListVerificationSummaries(ctx context.Context, companyID uuid.UU
 	if err != nil {
 		return nil, err
 	}
+	reversed := make(map[uuid.UUID]bool)
+	for _, v := range vers {
+		if v.ReversalOf.Valid {
+			reversed[uuidFromPg(v.ReversalOf)] = true
+		}
+	}
 	out := make([]VerificationSummary, 0, len(vers))
 	for _, v := range vers {
 		sum := VerificationSummary{
@@ -200,6 +212,7 @@ func (s *Store) ListVerificationSummaries(ctx context.Context, companyID uuid.UU
 			Date:        v.Vdate.Time.Format("2006-01-02"),
 			Description: v.Description,
 			IsReversal:  v.ReversalOf.Valid,
+			IsReversed:  reversed[v.ID],
 		}
 		lineRows, err := s.q.ListVerificationLinesByVerification(ctx, v.ID)
 		if err != nil {
@@ -217,32 +230,39 @@ func (s *Store) ListVerificationSummaries(ctx context.Context, companyID uuid.UU
 
 // UndoVerification posts a reversing entry (rättelseverifikat, series R) dated
 // today so the correction lands in the current period, and logs the undo. The
-// original verifikat stays immutable.
+// original verifikat stays immutable. The original row is locked while checking
+// for an existing reversal so concurrent/double-click requests cannot both post.
 func (s *Store) UndoVerification(ctx context.Context, companyID, verID uuid.UUID) (uuid.UUID, error) {
-	ver, err := s.q.GetVerification(ctx, verID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if ver.CompanyID != companyID {
-		return uuid.Nil, ErrForeignCompany
-	}
-	lineRows, err := s.q.ListVerificationLinesByVerification(ctx, verID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	orig := ledger.Verification{Series: ver.Series, Number: int(ver.Number)}
-	for _, l := range lineRows {
-		orig.Lines = append(orig.Lines, ledger.Line{
-			Account: l.Account,
-			Debit:   ledger.Amount(l.DebitOre),
-			Credit:  ledger.Amount(l.CreditOre),
-			VATCode: l.VatCode,
-		})
-	}
-	rev := ledger.Reverse(orig, "R", 0, time.Now(), "Ångra "+orig.ID())
-
 	var revID uuid.UUID
-	err = s.inTx(ctx, func(qtx *gen.Queries) error {
+	err := s.inTx(ctx, func(qtx *gen.Queries) error {
+		ver, err := qtx.GetVerificationForUpdate(ctx, verID)
+		if err != nil {
+			return err
+		}
+		if ver.CompanyID != companyID {
+			return ErrForeignCompany
+		}
+		alreadyReversed, err := qtx.HasVerificationReversal(ctx, pgUUID(verID))
+		if err != nil {
+			return err
+		}
+		if alreadyReversed {
+			return ErrAlreadyReversed
+		}
+		lineRows, err := qtx.ListVerificationLinesByVerification(ctx, verID)
+		if err != nil {
+			return err
+		}
+		orig := ledger.Verification{Series: ver.Series, Number: int(ver.Number)}
+		for _, l := range lineRows {
+			orig.Lines = append(orig.Lines, ledger.Line{
+				Account: l.Account,
+				Debit:   ledger.Amount(l.DebitOre),
+				Credit:  ledger.Amount(l.CreditOre),
+				VATCode: l.VatCode,
+			})
+		}
+		rev := ledger.Reverse(orig, "R", 0, time.Now(), "Ångra "+orig.ID())
 		id, err := s.postVerification(ctx, qtx, companyID, "R", time.Now(), rev.Description, rev.Lines, verID)
 		if err != nil {
 			return err
