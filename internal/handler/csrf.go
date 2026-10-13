@@ -9,9 +9,14 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"net/http"
+	"strings"
 )
 
 const csrfCookieName = "pare_csrf"
+
+// Keep this aligned with the upload handlers so CSRF validation can parse
+// multipart form fields without imposing a different in-memory limit.
+const csrfMultipartMemory = 16 << 20
 
 // ctxCSRFKey holds the per-browser CSRF token for the current request.
 type ctxCSRFKeyT int
@@ -47,9 +52,20 @@ func (s *Server) csrfProtect(next http.Handler) http.Handler {
 		}
 
 		if !safeMethod(r.Method) {
-			// ParseForm caches into r.PostForm; handlers re-reading via
-			// PostFormValue get the cached parse, so this is not double work.
-			_ = r.ParseForm()
+			// Multipart uploads need ParseMultipartForm so their ordinary fields
+			// (including the CSRF token) are populated in PostForm. ParseForm alone
+			// intentionally does not parse multipart bodies. The upload handlers can
+			// safely call ParseMultipartForm again; net/http caches the parsed form.
+			var err error
+			if strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "multipart/form-data") {
+				err = r.ParseMultipartForm(csrfMultipartMemory)
+			} else {
+				err = r.ParseForm()
+			}
+			if err != nil {
+				http.Error(w, "invalid form", http.StatusBadRequest)
+				return
+			}
 			got := r.PostFormValue("csrf")
 			if got == "" || subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
 				http.Error(w, "invalid CSRF token", http.StatusForbidden)
