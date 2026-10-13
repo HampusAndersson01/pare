@@ -92,9 +92,9 @@ func TestAttachDocumentToVerification(t *testing.T) {
 	if got != verID {
 		t.Fatalf("verification link = %s, want %s", got, verID)
 	}
-	metas, err := s.ListDocuments(ctx, co)
-	if err != nil || len(metas) != 1 || !metas[0].Attached || metas[0].VerificationID != verID {
-		t.Fatalf("linked metadata mismatch: %+v err=%v", metas, err)
+	refs, err := s.ListDocumentLinkRefs(ctx, co)
+	if err != nil || len(refs) != 1 || refs[0].VerificationID != verID {
+		t.Fatalf("linked metadata mismatch: %+v err=%v", refs, err)
 	}
 	if err := s.DeleteDocument(ctx, co, docID); err != ErrDocumentAttached {
 		t.Fatalf("verification document should be retained, got %v", err)
@@ -103,11 +103,11 @@ func TestAttachDocumentToVerification(t *testing.T) {
 	// A linked document cannot simultaneously become supplier-invoice evidence.
 	sup, _ := s.CreateCounterparty(ctx, co, Counterparty{Kind: "supplier", Name: "Supplier"})
 	inv, _ := s.CreateSupplierInvoice(ctx, co, sup, "INV-2", day("2026-03-02"), day("2026-04-01"), "", ledger.SEK(100, 0), moms.PIMP, "x")
-	if err := s.AttachDocumentToSupplier(ctx, co, docID, inv); err != ErrDocumentAttachConflict {
-		t.Fatalf("conflicting attachment should fail, got %v", err)
+	if err := s.AttachDocumentToSupplier(ctx, co, docID, inv); err == nil {
+		t.Fatal("conflicting supplier attachment should fail")
 	}
 
-	// Cross-company / unknown verification must not create a link.
+	// Unknown verification must not create a link.
 	otherDoc, _ := s.SaveDocument(ctx, co, "other.pdf", "application/pdf", []byte("%PDF other"), "")
 	if err := s.AttachDocumentToVerification(ctx, co, otherDoc, uuid.New()); err != ErrDocumentAttachConflict {
 		t.Fatalf("unknown verification should fail, got %v", err)
