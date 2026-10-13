@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ import (
 	"github.com/bright-interaction/pare/internal/testdb"
 )
 
-func setupDocumentTools(t *testing.T) (httpHandler interface{ ServeHTTP(http.ResponseWriter, *http.Request) }, *store.Store, uuid.UUID, func()) {
+func setupDocumentTools(t *testing.T) (http.Handler, *store.Store, uuid.UUID, func()) {
 	t.Helper()
 	pool, err := pgxpool.New(context.Background(), testdb.New(t, "mcp-docs"))
 	if err != nil {
