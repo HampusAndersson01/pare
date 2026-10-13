@@ -44,6 +44,38 @@ func (q *Queries) GetVerification(ctx context.Context, id uuid.UUID) (Verificati
 	return i, err
 }
 
+const getVerificationForUpdate = `-- name: GetVerificationForUpdate :one
+SELECT id, company_id, series, number, vdate, description, reversal_of, posted_at, created_at FROM verifications WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetVerificationForUpdate(ctx context.Context, id uuid.UUID) (Verification, error) {
+	row := q.db.QueryRow(ctx, getVerificationForUpdate, id)
+	var i Verification
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.Series,
+		&i.Number,
+		&i.Vdate,
+		&i.Description,
+		&i.ReversalOf,
+		&i.PostedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const hasVerificationReversal = `-- name: HasVerificationReversal :one
+SELECT EXISTS (SELECT 1 FROM verifications WHERE reversal_of = $1)
+`
+
+func (q *Queries) HasVerificationReversal(ctx context.Context, reversalOf pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasVerificationReversal, reversalOf)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const insertAuditLog = `-- name: InsertAuditLog :exec
 INSERT INTO audit_log (company_id, actor, actor_detail, action, target_type, target_id, detail, prev_hash, entry_hash)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
