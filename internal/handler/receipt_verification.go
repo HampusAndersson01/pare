@@ -4,6 +4,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -15,7 +16,7 @@ type receiptInboxRow struct {
 	ID        uuid.UUID
 	Filename  string
 	Note      string
-	CreatedAt interface{ Format(string) string }
+	CreatedAt time.Time
 	Attached  bool
 	Target    string
 }
