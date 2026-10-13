@@ -26,7 +26,7 @@
               <label style="font-size:12px">Koppla till verifikat</label>
               <select name="verification_id" required>
                 <option value="">Välj…</option>
-                {{range $.Data.Verifications}}<option value="{{.ID}}">{{.Series}}-{{.Number}} · {{.Date}}</option>{{end}}
+                {{range $.Data.Verifications}}<option value="{{.ID}}">{{.Series}}-{{.Number}} · {{.Date}} · {{.Description}}</option>{{end}}
               </select>
             </div>
             <button class="btn small" type="submit">Koppla</button>
