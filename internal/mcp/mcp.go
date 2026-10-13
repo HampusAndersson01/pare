@@ -78,6 +78,7 @@ func New(st *store.Store, pool *pgxpool.Pool, shieldKey []byte, apiKey string, m
 	s := &Server{store: st, shield: sh, apiKey: apiKey, maxWriteOre: maxWriteOre, tools: map[string]tool{}}
 	s.register()
 	s.registerCounterpartyTools()
+	s.registerDocumentTools()
 	return s, nil
 }
 
