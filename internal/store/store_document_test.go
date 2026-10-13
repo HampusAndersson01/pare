@@ -100,11 +100,20 @@ func TestAttachDocumentToVerification(t *testing.T) {
 		t.Fatalf("verification document should be retained, got %v", err)
 	}
 
-	// A linked document cannot simultaneously become supplier-invoice evidence.
+	// Verification-first: a linked document cannot later become supplier evidence.
 	sup, _ := s.CreateCounterparty(ctx, co, Counterparty{Kind: "supplier", Name: "Supplier"})
 	inv, _ := s.CreateSupplierInvoice(ctx, co, sup, "INV-2", day("2026-03-02"), day("2026-04-01"), "", ledger.SEK(100, 0), moms.PIMP, "x")
 	if err := s.AttachDocumentToSupplier(ctx, co, docID, inv); err == nil {
 		t.Fatal("conflicting supplier attachment should fail")
+	}
+
+	// Supplier-first: the inverse order must also be rejected.
+	supplierDoc, _ := s.SaveDocument(ctx, co, "supplier.pdf", "application/pdf", []byte("%PDF supplier"), "")
+	if err := s.AttachDocumentToSupplier(ctx, co, supplierDoc, inv); err != nil {
+		t.Fatalf("attach supplier first: %v", err)
+	}
+	if err := s.AttachDocumentToVerification(ctx, co, supplierDoc, verID); err != ErrDocumentAttachConflict {
+		t.Fatalf("supplier-linked document should reject verification link, got %v", err)
 	}
 
 	// Unknown verification must not create a link.
