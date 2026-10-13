@@ -31,6 +31,7 @@ type verificationDocumentView struct {
 type verificationRelation struct {
 	ID    uuid.UUID
 	Label string
+	Valid bool
 }
 
 type verificationDetailData struct {
@@ -82,10 +83,10 @@ func (s *Server) handleVerificationDetail(w http.ResponseWriter, r *http.Request
 			for _, v := range all {
 				label := v.Series + strconv.Itoa(v.Number)
 				if v.ID == detail.ReversalOf {
-					data.ReversalOf = verificationRelation{ID: v.ID, Label: label}
+					data.ReversalOf = verificationRelation{ID: v.ID, Label: label, Valid: true}
 				}
 				if v.ID == detail.ReversedBy {
-					data.ReversedBy = verificationRelation{ID: v.ID, Label: label}
+					data.ReversedBy = verificationRelation{ID: v.ID, Label: label, Valid: true}
 				}
 			}
 		}
@@ -96,9 +97,6 @@ func (s *Server) handleVerificationDetail(w http.ResponseWriter, r *http.Request
 	render(w, "verification_detail", pd, http.StatusOK)
 }
 
-// handleReceiptPreviewFile serves only sniffed-safe receipt formats inline and
-// permits same-origin framing for the verification detail page. The regular
-// /file route keeps its stricter no-frame headers for direct viewing/download.
 func (s *Server) handleReceiptPreviewFile(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
