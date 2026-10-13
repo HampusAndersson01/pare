@@ -15,8 +15,8 @@
     <div><label>Datum</label><div>{{$d.Verification.Date}}</div></div>
     <div style="flex:2"><label>Beskrivning</label><div>{{$d.Verification.Description}}</div></div>
   </div>
-  {{if $d.ReversalOf.ID}}<p class="muted">Rättelse av <a href="/verifications/{{$d.ReversalOf.ID}}">{{$d.ReversalOf.Label}}</a></p>{{end}}
-  {{if $d.ReversedBy.ID}}<p class="muted">Rättad genom <a href="/verifications/{{$d.ReversedBy.ID}}">{{$d.ReversedBy.Label}}</a></p>{{end}}
+  {{if $d.ReversalOf.Valid}}<p class="muted">Rättelse av <a href="/verifications/{{$d.ReversalOf.ID}}">{{$d.ReversalOf.Label}}</a></p>{{end}}
+  {{if $d.ReversedBy.Valid}}<p class="muted">Rättad genom <a href="/verifications/{{$d.ReversedBy.ID}}">{{$d.ReversedBy.Label}}</a></p>{{end}}
 </div>
 
 <h2>Kontering</h2>
