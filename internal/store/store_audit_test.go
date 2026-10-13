@@ -81,3 +81,36 @@ func TestPeriodLockUnknownAccountAndAudit(t *testing.T) {
 		t.Fatal("no undo entry in audit log")
 	}
 }
+
+func TestUndoVerificationRejectsSecondUndo(t *testing.T) {
+	s, pool := testStore(t)
+	defer pool.Close()
+	ctx := context.Background()
+
+	co, err := s.BootstrapCompany(ctx, "BI AB", "556000-0000")
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	verID, err := s.PostVerification(ctx, co, "A", day("2026-02-10"), "Sale", sale(), uuid.Nil)
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	if _, err := s.UndoVerification(ctx, co, verID); err != nil {
+		t.Fatalf("first undo: %v", err)
+	}
+
+	before, err := s.q.CountVerifications(ctx, co)
+	if err != nil {
+		t.Fatalf("count before second undo: %v", err)
+	}
+	if _, err := s.UndoVerification(ctx, co, verID); !errors.Is(err, ErrAlreadyReversed) {
+		t.Fatalf("second undo: want ErrAlreadyReversed, got %v", err)
+	}
+	after, err := s.q.CountVerifications(ctx, co)
+	if err != nil {
+		t.Fatalf("count after second undo: %v", err)
+	}
+	if after != before {
+		t.Fatalf("second undo created a new verification: before=%d after=%d", before, after)
+	}
+}
