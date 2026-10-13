@@ -59,3 +59,19 @@ func TestReport(t *testing.T) {
 		t.Errorf("Box49 = %s, want 2000,00", d.Box49)
 	}
 }
+
+func TestReportIncludesLegacyDomesticServiceSalesInBox05(t *testing.T) {
+	bal := map[string]ledger.Amount{
+		"3301": -ledger.SEK(3136, 80),
+		"2611": -ledger.SEK(784, 20),
+	}
+
+	d := Report(bal)
+
+	if d.Box05 != ledger.SEK(3136, 80) {
+		t.Errorf("Box05 = %s, want 3136,80", d.Box05)
+	}
+	if d.Box10 != ledger.SEK(784, 20) {
+		t.Errorf("Box10 = %s, want 784,20", d.Box10)
+	}
+}
