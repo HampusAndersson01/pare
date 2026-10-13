@@ -5,6 +5,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -71,15 +72,15 @@ func (s *Server) handleVerificationDetail(w http.ResponseWriter, r *http.Request
 		mime := strings.ToLower(d.Mime)
 		data.Documents = append(data.Documents, verificationDocumentView{
 			DocumentMeta: d,
-			IsImage: strings.HasPrefix(mime, "image/"),
-			IsPDF: mime == "application/pdf",
+			IsImage:      strings.HasPrefix(mime, "image/"),
+			IsPDF:        mime == "application/pdf",
 		})
 	}
 
 	if detail.ReversalOf != uuid.Nil || detail.ReversedBy != uuid.Nil {
 		if all, err := s.Store.ListVerificationSummaries(ctx, co); err == nil {
 			for _, v := range all {
-				label := v.Series + ledgerNumber(v.Number)
+				label := v.Series + strconv.Itoa(v.Number)
 				if v.ID == detail.ReversalOf {
 					data.ReversalOf = verificationRelation{ID: v.ID, Label: label}
 				}
@@ -90,26 +91,7 @@ func (s *Server) handleVerificationDetail(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	pd := s.base(r, detail.Verification.Series+ledgerNumber(detail.Verification.Number))
+	pd := s.base(r, detail.Verification.Series+strconv.Itoa(detail.Verification.Number))
 	pd.Data = data
 	render(w, "verification_detail", pd, http.StatusOK)
-}
-
-func ledgerNumber(n int) string {
-	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(rune(0))), "")) + fmtInt(n)
-}
-
-func fmtInt(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	const digits = "0123456789"
-	var b [20]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = digits[n%10]
-		n /= 10
-	}
-	return string(b[i:])
 }
