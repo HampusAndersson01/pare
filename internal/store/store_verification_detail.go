@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/bright-interaction/pare/internal/ledger"
 )
 
 // VerificationDetailView is one immutable verification together with the
@@ -45,7 +47,7 @@ func (s *Store) VerificationDetail(ctx context.Context, companyID, verificationI
 	}
 	for _, l := range lines {
 		out.Verification.Lines = append(out.Verification.Lines, VerificationLineView{
-			Account: l.Account, Debit: l.DebitOre, Credit: l.CreditOre,
+			Account: l.Account, Debit: ledger.Amount(l.DebitOre), Credit: ledger.Amount(l.CreditOre),
 		})
 	}
 
