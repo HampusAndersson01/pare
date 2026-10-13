@@ -97,6 +97,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/kvitton", s.handleReceiptsWithVerificationLinks)
 				r.Post("/kvitton", s.handleReceiptUpload)
 				r.Get("/kvitton/{id}/file", s.handleReceiptFile)
+				r.Get("/kvitton/{id}/preview", s.handleReceiptPreviewFile)
 				r.Post("/kvitton/{id}/verification", s.handleReceiptAttachVerification)
 				r.Post("/kvitton/{id}/delete", s.handleReceiptDelete)
 				r.Get("/supplier-invoices", s.handleSupplierInvoices)
@@ -106,6 +107,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/supplier-invoices/{id}/pay", s.handleSupplierPayForm)
 				r.Post("/supplier-invoices/{id}/pay", s.handleSupplierPay)
 				r.Get("/verifications", s.handleVerifications)
+				r.Get("/verifications/{id}", s.handleVerificationDetail)
 				r.Post("/verifications", s.handlePostVerification)
 				r.Post("/verifications/{id}/undo", s.handleUndo)
 				r.Get("/reports", s.handleReports)
@@ -144,9 +146,10 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		// script-src falls back to default-src 'none' (no inline/remote JS in
-		// the app); the UI's single inline <style> is allowed via style-src.
+		// the app); same-origin frames are used only for authenticated receipt
+		// previews on the verification detail page.
 		h.Set("Content-Security-Policy",
-			"default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+			"default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		next.ServeHTTP(w, r)
 	})
