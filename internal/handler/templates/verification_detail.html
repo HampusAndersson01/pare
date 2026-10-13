@@ -1,0 +1,69 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="toolbar">
+  <div>
+    <a class="muted" href="/verifications">← Till verifikat</a>
+    <h1 style="margin:6px 0 0">{{$d.Verification.Series}}{{$d.Verification.Number}}</h1>
+  </div>
+  <div>
+    {{if $d.Verification.IsReversal}}<span class="pill">rättelse</span>{{else if $d.Verification.IsReversed}}<span class="pill">ångrad</span>{{else}}<span class="pill finalized">bokförd</span>{{end}}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="row">
+    <div><label>Datum</label><div>{{$d.Verification.Date}}</div></div>
+    <div style="flex:2"><label>Beskrivning</label><div>{{$d.Verification.Description}}</div></div>
+  </div>
+  {{if $d.ReversalOf.ID}}<p class="muted">Rättelse av <a href="/verifications/{{$d.ReversalOf.ID}}">{{$d.ReversalOf.Label}}</a></p>{{end}}
+  {{if $d.ReversedBy.ID}}<p class="muted">Rättad genom <a href="/verifications/{{$d.ReversedBy.ID}}">{{$d.ReversedBy.Label}}</a></p>{{end}}
+</div>
+
+<h2>Kontering</h2>
+<table>
+  <tr><th>Konto</th><th>Kontonamn</th><th class="num">Debet</th><th class="num">Kredit</th></tr>
+  {{range $d.Lines}}
+  <tr>
+    <td>{{.Account}}</td>
+    <td>{{.Name}}</td>
+    <td class="num">{{if gt .Debit 0}}{{.Debit}}{{end}}</td>
+    <td class="num">{{if gt .Credit 0}}{{.Credit}}{{end}}</td>
+  </tr>
+  {{end}}
+  <tr><th colspan="2">Summa</th><th class="num">{{$d.TotalDebit}}</th><th class="num">{{$d.TotalCredit}}</th></tr>
+</table>
+
+<h2>Underlag {{if $d.Documents}}<span class="pill">{{len $d.Documents}}</span>{{end}}</h2>
+{{if $d.Documents}}
+  {{range $d.Documents}}
+  <div class="card" style="margin-bottom:18px">
+    <div class="toolbar" style="align-items:flex-start">
+      <div>
+        <strong>{{.Filename}}</strong>
+        {{if .Note}}<div class="muted">{{.Note}}</div>{{end}}
+        <div class="muted" style="font-size:12px">{{.Mime}} · {{.ByteSize}} byte · uppladdad {{.CreatedAt.Format "2006-01-02 15:04"}}</div>
+      </div>
+      <a class="btn small secondary" href="/kvitton/{{.ID}}/file" target="_blank" rel="noopener">Öppna i ny flik</a>
+    </div>
+    {{if .IsImage}}
+      <div style="margin-top:12px"><img src="/kvitton/{{.ID}}/file" alt="Förhandsvisning av {{.Filename}}" style="max-width:100%;max-height:720px;object-fit:contain;border:1px solid var(--border);border-radius:8px"></div>
+    {{else if .IsPDF}}
+      <div style="margin-top:12px"><iframe src="/kvitton/{{.ID}}/file" title="Förhandsvisning av {{.Filename}}" style="width:100%;height:720px;border:1px solid var(--border);border-radius:8px"></iframe></div>
+    {{else}}
+      <div class="muted" style="margin-top:12px">Den här filtypen kan inte förhandsvisas direkt. Öppna filen i en ny flik.</div>
+    {{end}}
+  </div>
+  {{end}}
+{{else}}
+  <div class="empty">Inga underlag är kopplade till det här verifikatet.</div>
+{{end}}
+
+{{if and (not $d.Verification.IsReversal) (not $d.Verification.IsReversed)}}
+<div style="margin-top:20px">
+  <form method="post" action="/verifications/{{$d.Verification.ID}}/undo">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button class="btn secondary" type="submit">Ångra med rättelseverifikat</button>
+  </form>
+</div>
+{{end}}
+{{end}}
