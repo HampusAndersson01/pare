@@ -39,6 +39,7 @@ func TestShieldCompleteness(t *testing.T) {
 	s := &Server{tools: map[string]tool{}}
 	s.register()
 	s.registerCounterpartyTools()
+	s.registerDocumentTools()
 	if len(s.tools) == 0 {
 		t.Fatal("no tools registered")
 	}
