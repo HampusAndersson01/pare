@@ -63,3 +63,62 @@ func TestDocumentEncryptedAndRetention(t *testing.T) {
 		t.Fatalf("want ErrForeignCompany, got %v", err)
 	}
 }
+
+func TestAttachDocumentToVerification(t *testing.T) {
+	s, pool := testStore(t)
+	defer pool.Close()
+	ctx := context.Background()
+	co, _ := s.BootstrapCompany(ctx, "BI AB", "556000-0000")
+
+	docID, err := s.SaveDocument(ctx, co, "receipt.pdf", "application/pdf", []byte("%PDF receipt"), "server")
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	verID, err := s.PostVerification(ctx, co, "V", day("2026-03-02"), "Serverel", []ledger.Line{
+		{Account: "5090", Debit: ledger.SEK(100, 0)},
+		{Account: "2018", Credit: ledger.SEK(100, 0)},
+	}, uuid.Nil)
+	if err != nil {
+		t.Fatalf("post verification: %v", err)
+	}
+
+	if err := s.AttachDocumentToVerification(ctx, co, docID, verID); err != nil {
+		t.Fatalf("attach verification: %v", err)
+	}
+	var got uuid.UUID
+	if err := pool.QueryRow(ctx, "SELECT verification_id FROM documents WHERE id=$1", docID).Scan(&got); err != nil {
+		t.Fatalf("query link: %v", err)
+	}
+	if got != verID {
+		t.Fatalf("verification link = %s, want %s", got, verID)
+	}
+	refs, err := s.ListDocumentLinkRefs(ctx, co)
+	if err != nil || len(refs) != 1 || refs[0].VerificationID != verID {
+		t.Fatalf("linked metadata mismatch: %+v err=%v", refs, err)
+	}
+	if err := s.DeleteDocument(ctx, co, docID); err != ErrDocumentAttached {
+		t.Fatalf("verification document should be retained, got %v", err)
+	}
+
+	// Verification-first: a linked document cannot later become supplier evidence.
+	sup, _ := s.CreateCounterparty(ctx, co, Counterparty{Kind: "supplier", Name: "Supplier"})
+	inv, _ := s.CreateSupplierInvoice(ctx, co, sup, "INV-2", day("2026-03-02"), day("2026-04-01"), "", ledger.SEK(100, 0), moms.PIMP, "x")
+	if err := s.AttachDocumentToSupplier(ctx, co, docID, inv); err == nil {
+		t.Fatal("conflicting supplier attachment should fail")
+	}
+
+	// Supplier-first: the inverse order must also be rejected.
+	supplierDoc, _ := s.SaveDocument(ctx, co, "supplier.pdf", "application/pdf", []byte("%PDF supplier"), "")
+	if err := s.AttachDocumentToSupplier(ctx, co, supplierDoc, inv); err != nil {
+		t.Fatalf("attach supplier first: %v", err)
+	}
+	if err := s.AttachDocumentToVerification(ctx, co, supplierDoc, verID); err != ErrDocumentAttachConflict {
+		t.Fatalf("supplier-linked document should reject verification link, got %v", err)
+	}
+
+	// Unknown verification must not create a link.
+	otherDoc, _ := s.SaveDocument(ctx, co, "other.pdf", "application/pdf", []byte("%PDF other"), "")
+	if err := s.AttachDocumentToVerification(ctx, co, otherDoc, uuid.New()); err != ErrDocumentAttachConflict {
+		t.Fatalf("unknown verification should fail, got %v", err)
+	}
+}

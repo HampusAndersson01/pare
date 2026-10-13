@@ -26,6 +26,10 @@ var safeFields = map[string]bool{
 	"at": true, "actor": true, "action": true, "target": true,
 	"total": true, "currency": true, "total_sek": true, "outstanding_kr": true,
 	"exact_match": true,
+	// Stable record identifiers, cryptographic hashes and technical metadata are
+	// not identities. Receipt filename/note/content deliberately never cross MCP.
+	"counterparty_id": true, "document_id": true, "sha256": true, "mime": true,
+	"created_at": true, "attached_to": true, "target_id": true,
 	// invoice_number is a sequential business key (e.g. 2026-0001), not an
 	// identity; safe to echo so the AI can confirm which invoice it settled.
 	"invoice_number": true,
@@ -34,6 +38,8 @@ var safeFields = map[string]bool{
 func TestShieldCompleteness(t *testing.T) {
 	s := &Server{tools: map[string]tool{}}
 	s.register()
+	s.registerCounterpartyTools()
+	s.registerDocumentTools()
 	if len(s.tools) == 0 {
 		t.Fatal("no tools registered")
 	}
