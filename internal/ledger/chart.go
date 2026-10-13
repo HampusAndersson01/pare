@@ -55,18 +55,23 @@ type Account struct {
 	DefaultVATCode string
 }
 
-// CoreChart is the essential BAS chart of accounts for a Swedish service AB,
-// with official names verified against bas.se (BAS 2025/2026) 2026-07-09. It is
-// what BootstrapCompany seeds. VAT codes on sales accounts drive the moms
-// engine. Classification (above) works for any account, chart or not.
+// CoreChart is the essential BAS chart of accounts for a Swedish service
+// business, with official names verified against bas.se (BAS 2025/2026)
+// 2026-07-09. It also includes common sole-trader and legacy migration
+// accounts so historical books can be imported without remapping valid BAS
+// postings. VAT codes on sales accounts drive the moms engine. Classification
+// (above) works for any account, chart or not.
 var CoreChart = []Account{
 	// Klass 1 Tillgångar
+	{"1220", "Inventarier och verktyg", ""},
 	{"1510", "Kundfordringar", ""},
 	{"1630", "Avräkning för skatter och avgifter (skattekonto)", ""},
 	{"1790", "Övriga förutbetalda kostnader och upplupna intäkter", ""},
 	{"1910", "Kassa", ""},
 	{"1930", "Företagskonto/checkkonto/affärskonto", ""},
 	// Klass 2 Eget kapital och skulder
+	{"2013", "Övriga egna uttag", ""},
+	{"2018", "Övriga egna insättningar", ""},
 	{"2081", "Aktiekapital", ""},
 	{"2091", "Balanserad vinst eller förlust", ""},
 	{"2099", "Årets resultat", ""},
@@ -86,6 +91,7 @@ var CoreChart = []Account{
 	{"3001", "Försäljning inom Sverige, 25 % moms", "SE25"},
 	{"3002", "Försäljning inom Sverige, 12 % moms", "SE12"},
 	{"3003", "Försäljning inom Sverige, 6 % moms", "SE06"},
+	{"3301", "Försäljning tjänster inom Sverige, 25 % moms", "SE25"},
 	{"3305", "Försäljning tjänster till land utanför EU", "EXP"},
 	{"3308", "Försäljning tjänster till annat EU-land", "RCEU"},
 	{"3740", "Öres- och kronutjämning", ""},
@@ -95,6 +101,7 @@ var CoreChart = []Account{
 	{"4535", "Inköp av tjänster från annat EU-land, 25 % moms", ""},
 	// Klass 5 Övriga externa kostnader (del 1)
 	{"5010", "Lokalhyra", ""},
+	{"5090", "Övriga lokalkostnader", ""},
 	{"5410", "Förbrukningsinventarier", ""},
 	{"5460", "Förbrukningsmaterial", ""},
 	{"5910", "Annonsering", ""},
